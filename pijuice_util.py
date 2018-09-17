@@ -2,6 +2,10 @@
 
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 
+def getDataOrError(d):
+    rv = d.get('data', d['error'])
+    return rv
+
 def configDict(config):
     rv = {}
 
@@ -20,8 +24,10 @@ if __name__ == '__main__':
     g.add_argument('--enable-wakeup', action='store_true', help='enable the wakeup flag')
     g.add_argument('--get-time', action='store_true', help='print the RTC time')
     g.add_argument('--get-alarm', action='store_true', help='print the RTC alarm')
-    g.add_argument('--get-status', action='store_true', help='print the pijiuce config')
-    g.add_argument('--get-config', action='store_true', help='print the pijiuce status')
+    g.add_argument('--get-status', action='store_true', help='print the pijiuce status')
+    g.add_argument('--get-config', action='store_true', help='print the pijiuce config')
+    g.add_argument('--get-battery', action='store_true', help='print the pijiuce battery status')
+    g.add_argument('--get-input', action='store_true', help='print the pijiuce input status')
 
     parser.add_argument('--verbose', action='count', help='crank up logging')
 
@@ -63,12 +69,30 @@ if __name__ == '__main__':
         print str(t)
 
     if args.get_status:
-        s = pj.status
-        print repr(s)
-        print str(s)
-        print s.__dict__
+        print pj.status.GetStatus()
 
     if args.get_config:
         s = pj.config
         print configDict(s)
+
+    if args.get_battery:
+        v = {}
+        status = pj.status
+        v['battery_current'] = getDataOrError(status.GetBatteryCurrent())
+        v['battery_voltage'] = getDataOrError(status.GetBatteryVoltage())
+        v['charge_level'] = getDataOrError(status.GetChargeLevel())
+        s = status.GetStatus().get('data',{ 'error': 'NO-STATUS-AVAILABLE'})
+        v['battery_status']  = s.get('battery', 'BATTERY_STATUS-NOT-IN-STATUS')
+        print v
+
+    if args.get_input:
+        v = {}
+        status = pj.status
+
+        v['io_voltage'] = getDataOrError(status.GetIoVoltage())
+        v['io_current'] = getDataOrError(status.GetIoCurrent())
+        s = status.GetStatus().get('data',{ 'error': 'NO-STATUS-AVAILABLE'})
+        v['gpio_power_status'] = s.get('powerInput5vIo', 'GPIO_POWER_STATUS-NOT-IN-STATUS')
+        v['usb_power_input']  = s.get('powerInput', 'POWERINPUT-NOT-IN-STATUS')
+        print v
 
