@@ -6,15 +6,6 @@ def getDataOrError(d):
     rv = d.get('data', d['error'])
     return rv
 
-def configDict(config):
-    rv = {}
-
-    # TODO: should we camelCase here
-    rv['charging_config'] = config.GetChargingConfig()
-    rv['battery_profile'] = config.GetBatteryProfile()
-    rv['firmware_version'] = config.GetFirmwareVersion()
-    return rv
-
 if __name__ == '__main__':
     import pijuice
     import argparse, logging
@@ -37,6 +28,7 @@ if __name__ == '__main__':
     if args.verbose > 0:
         logging.getLogger().setLevel(logging.DEBUG)
 
+    # TODO does this need to be configurable
     pj = pijuice.PiJuice(1, 0x14)
 
     if args.enable_wakeup:
@@ -55,44 +47,56 @@ if __name__ == '__main__':
         logging.debug ('wakeup enabled')
 
         ctr = rtc.GetControlStatus()
+        # TODO do we need the str() call?
         print str(ctr)
         logging.info ('control status is now %s', str(ctr))
 
-    if args.get_time:
-        rtc = pj.rtcAlarm
-        t = rtc.GetTime()
-        print str(t)
-
-    if args.get_alarm:
-        rtc = pj.rtcAlarm
-        t = rtc.GetAlarm()
-        print str(t)
+    # primitives
 
     if args.get_status:
         print pj.status.GetStatus()
 
+    if args.get_time:
+        rtc = pj.rtcAlarm
+        print rtc.GetTime()
+
+    # composites
+
     if args.get_config:
-        s = pj.config
-        print configDict(s)
+        rv = {}
+        # TODO either clean this up (making it like get_battery), else break it into several actions
+        rv['chargingConfig'] = config.GetChargingConfig()
+        rv['batteryProfile'] = config.GetBatteryProfile()
+        rv['firmwareVersion'] = config.GetFirmwareVersion()
+        print rv
+
+    if args.get_alarm:
+        rtc = pj.rtcAlarm
+        rv = {}
+        # TODO either clean this up (making it like get_battery), else break it into several actions
+        rv['alarm'] = rtc.GetAlarm()
+        rv['controlStatus'] = rtc.GetControlStatus()
+        print rv
 
     if args.get_battery:
         v = {}
         status = pj.status
-        v['battery_current'] = getDataOrError(status.GetBatteryCurrent())
-        v['battery_voltage'] = getDataOrError(status.GetBatteryVoltage())
-        v['charge_level'] = getDataOrError(status.GetChargeLevel())
+        v['batteryCurrent'] = getDataOrError(status.GetBatteryCurrent())
+        v['batteryVoltage'] = getDataOrError(status.GetBatteryVoltage())
+        v['chargeLevel'] = getDataOrError(status.GetChargeLevel())
         s = status.GetStatus().get('data',{ 'error': 'NO-STATUS-AVAILABLE'})
-        v['battery_status']  = s.get('battery', 'BATTERY_STATUS-NOT-IN-STATUS')
+        v['batteryStatus']  = s.get('battery', 'BATTERY_STATUS-NOT-IN-STATUS')
         print v
 
     if args.get_input:
         v = {}
         status = pj.status
 
-        v['io_voltage'] = getDataOrError(status.GetIoVoltage())
-        v['io_current'] = getDataOrError(status.GetIoCurrent())
+        # TODO should we camelCase here
+        v['ioVoltage'] = getDataOrError(status.GetIoVoltage())
+        v['ioCurrent'] = getDataOrError(status.GetIoCurrent())
         s = status.GetStatus().get('data',{ 'error': 'NO-STATUS-AVAILABLE'})
-        v['gpio_power_status'] = s.get('powerInput5vIo', 'GPIO_POWER_STATUS-NOT-IN-STATUS')
-        v['usb_power_input']  = s.get('powerInput', 'POWERINPUT-NOT-IN-STATUS')
+        # TODO is 'gpioPowerStatus' name good, or should it be powerInput5vIo?
+        v['gpioPowerStatus'] = s.get('powerInput5vIo', 'GPIO_POWER_STATUS-NOT-IN-STATUS')
+        v['usbPowerInput']  = s.get('powerInput', 'POWERINPUT-NOT-IN-STATUS')
         print v
-
